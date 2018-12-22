@@ -14,30 +14,39 @@ export default class TextStyles {
                 textAlign: 'right'
             }
         },
+        backgrounds: {
+            bgWhite: {
+                backgroundColor: "white"
+            },
+            bgTransparent: {
+                backgroundColor: "transparent"
+            }
+        },
         appearances: {
+            inherit: {},
             success: {
-                color: "#FFFFFF"
+                color: "#FFFFFF",
             },
             disabled: {
-                color: "#999999"
+                color: "#999999",
             },
             danger: {
-                color: "#FFFFFF"
+                color: "#FFFFFF",
             },
             secondary: {
-                color: "#000000"
+                color: "#000000",
             },
             primary: {
-                color: "#FFFFFF"
+                color: "#FFFFFF",
             },
             red: {
-                color: colors.danger
+                color: colors.danger,
             },
             orange: {
-                color: colors.warning
+                color: colors.warning,
             },
             green: {
-                color: colors.success
+                color: colors.success,
             }
         },
         decoration: {
@@ -73,9 +82,10 @@ export default class TextStyles {
         const defaults = {
             aligns: this.styleTypes.aligns.center,
             sizes: this.styleTypes.sizes.medium,
-            appearances: this.styleTypes.appearances.secondary,
+            appearances: this.styleTypes.appearances.inherit,
             shapes: this.styleTypes.shapes.standard,
-            decoration: this.styleTypes.decoration.none
+            decoration: this.styleTypes.decoration.none,
+            backgrounds: this.styleTypes.backgrounds.bgTransparent
         };
         styles = styles ? styles.split(",") : [];
         let styleDef = {};

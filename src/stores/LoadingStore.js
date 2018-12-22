@@ -1,18 +1,19 @@
-import SubFeatureStore from "./SubFeatureStore";
-import applicationStore from "./ApplicationStore";
-import RootFeatureStore from "./RootFeatureStore";
+import StoresUtils from "../pages/StoresUtils";
+import AbstractStore from "./AbstractStore";
 
-class LoadingStore extends SubFeatureStore {
+const EVT_LOADING_STORE_CHANGED = "EVT_LOADING_STORE_CHANGED";
+
+class LoadingStore extends AbstractStore {
     constructor() {
-        super(applicationStore, "loading");
+        super("loading", EVT_LOADING_STORE_CHANGED);
         this.inProgress = [];
     }
 
     getActions(){
-        return RootFeatureStore.ALL_ACTIONS;
+        return StoresUtils.ALL_ACTIONS;
     }
 
-    getState(){
+    buildState(){
         return {
             busy: this.isBusy()
         }

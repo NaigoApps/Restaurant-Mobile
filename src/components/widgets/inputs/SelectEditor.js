@@ -1,17 +1,7 @@
 import React, {Component} from 'react';
 import RoundButton from "../../../widgets/RoundButton";
 import {ApplicationActions} from "../../../actions/ApplicationActions";
-
-/**
- * Events:
- * - onSelect
- * - onDeselect
- * - onSelectPage
- *
- * - onShowModal
- * - onAbort
- * - onConfirm
- */
+import RenderingData from "./RenderingData";
 
 export default class SelectEditor extends Component {
     constructor(props) {
@@ -22,38 +12,26 @@ export default class SelectEditor extends Component {
     }
 
     renderValue(value) {
-        const options = this.props.options;
-        if (!options.renderer || !value) {
-            return value || "?";
+        let renderingData;
+        if (this.props.options.renderer) {
+            renderingData = this.props.options.renderer(value);
+            if (renderingData instanceof RenderingData) {
+                return renderingData;
+            }
+            renderingData = new RenderingData(renderingData, "secondary");
+        } else {
+            renderingData = new RenderingData(value, "secondary");
         }
-        return options.renderer(value);
-    }
-
-    id(option) {
-        if (option && this.props.options.id) {
-            return this.props.options.id(option);
-        }
-        if (option && option.uuid) {
-            return option.uuid;
-        }
-        return option;
-    }
-
-    findValue(value) {
-        return this.props.options.values.find(val => this.id(val) === value) || null;
-    }
-
-    renderLabel() {
-        const label = this.props.options.label;
-        const value = this.findValue(this.props.options.value);
-        return label + ": " + this.renderValue(value);
+        return renderingData;
     }
 
     render() {
+        const label = this.props.options.label;
+        const rendered = this.renderValue(this.props.options.value);
         return <RoundButton
             disabled={this.props.disabled}
-            text={this.renderLabel()}
-            style="left"
+            text={label + ": " + rendered.text}
+            style={rendered.backgroundColor}
             commitAction={() => ApplicationActions.showSelectInput(this.props.options)}
         />;
     }

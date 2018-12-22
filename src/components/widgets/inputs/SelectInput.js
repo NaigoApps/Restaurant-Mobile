@@ -1,9 +1,11 @@
 import React, {Component} from 'react';
-import {distribute, uuid} from "../../../utils/Utils";
+import {distribute} from "../../../utils/Utils";
 import Row from "../../../widgets/Row";
 import RoundButton from "../../../widgets/RoundButton";
-import {FlatList, ScrollView} from "react-native";
+import {FlatList} from "react-native";
 import Column from "../../../widgets/Column";
+import RenderingData from "./RenderingData";
+import Dimensions from "../../../utils/Dimensions";
 
 export default class SelectInput extends Component {
     constructor(props) {
@@ -11,50 +13,54 @@ export default class SelectInput extends Component {
     }
 
     select(option) {
-        if (!option || this.isSelected(this.id(option)) && this.props.onDeselect) {
-            this.props.onDeselect(this.id(option));
+        if (!option || this.isSelected(option) && this.props.onDeselect) {
+            this.props.onDeselect(option);
         } else if (this.props.onSelect) {
-            this.props.onSelect(this.id(option));
+            this.props.onSelect(option);
         }
     }
 
-    id(option) {
-        if (option && this.props.id) {
-            return this.props.id(option);
+    longSelect(option){
+        if(this.props.onLongSelect){
+            this.props.onLongSelect(option);
         }
-        if (option && option.uuid){
-            return option.uuid;
-        }
-        return option;
     }
 
-    isSelected(uuid) {
+    isSelected(option) {
         if (!this.props.multiSelect) {
-            return this.props.selected === uuid;
+            return this.props.selected === option;
         } else {
-            return this.props.selected.includes(uuid);
+            return this.props.selected.includes(option);
         }
     }
 
     renderOption(option) {
+        let renderingData;
         if (this.props.renderer) {
-            return this.props.renderer(option);
+            renderingData = this.props.renderer(option);
+            if (renderingData instanceof RenderingData) {
+                return renderingData;
+            }
+            renderingData = new RenderingData(renderingData, "secondary");
+        } else {
+            renderingData = new RenderingData(option, "secondary");
         }
-        return option;
+        return renderingData;
     }
 
-    renderColor(option) {
-        return this.props.colorRenderer ? this.props.colorRenderer(option) : "secondary"
-    }
-
-    renderRow(items, cols) {
+    renderRow(items, cols, index) {
         items = items.map((item, index) => {
+            const rendered = this.renderOption(item);
+            const pR = index === 0 ? Dimensions.smallSpace : 0;
+            const pL = index === items.length - 1 ? Dimensions.smallSpace : 0;
             return (
-                <Column key={index} padding={8}>
+                <Column mL={pL} mr={pR} key={index} >
                     <RoundButton
-                        active={this.isSelected(this.id(item))}
-                        text={this.renderOption(item)}
-                        style={this.renderColor(item)}
+                        active={this.isSelected(item)}
+                        text={rendered.text}
+                        style={rendered.backgroundColor}
+                        textStyle={rendered.textStyle}
+                        longCommitAction={this.longSelect.bind(this, item)}
                         commitAction={this.select.bind(this, item)}
                     />
                 </Column>
@@ -65,14 +71,13 @@ export default class SelectInput extends Component {
             items.push(<Column key={items.length}/>);
         }
 
-        return <Row>{items}</Row>
+        return <Row mt={index !== 0}>{items}</Row>
     }
 
     render() {
         const entities = this.props.options;
-        const colorRenderer = this.props.colorRenderer;
 
-        const cols = this.props.cols || 3;
+        const cols = this.props.cols || 2;
 
         let optionsList;
 
@@ -80,7 +85,9 @@ export default class SelectInput extends Component {
 
         return <FlatList
                 data={optionsList}
+                refreshing={false}
+                onRefresh={this.props.onRefresh}
                 keyExtractor={(item, index) => index.toString()}
-                renderItem={({item}) => this.renderRow(item, cols)}/>;
+                renderItem={(row) => this.renderRow(row.item, cols, row.index)}/>;
     }
 }

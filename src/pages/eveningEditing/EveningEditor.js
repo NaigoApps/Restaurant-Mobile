@@ -1,55 +1,61 @@
 import React from 'react';
+import {beautifyDate, formatDate} from "../../components/widgets/inputs/DateInput";
 import Row from "../../widgets/Row";
-import {Button, FlatList, ScrollView} from "react-native";
 import Column from "../../widgets/Column";
-import {beautifyDate} from "../../components/widgets/inputs/DateInput";
 import Label from "../../widgets/Label";
-import TextStyles from "../../utils/TextStyles";
-import DiningTablesUtils from "./tables/DiningTablesUtils";
-import {DiningTablesCreatorActions} from "./diningTableEditing/DiningTablesCreatorActions";
-import RoundButton from "../../widgets/RoundButton";
-import ButtonStyles from "../../utils/ButtonStyles";
-import {ApplicationActions} from "../../actions/ApplicationActions";
-import SelectInput from "../../components/widgets/inputs/SelectInput";
-import {DiningTablesEditorActions} from "./diningTableEditing/DiningTablesEditorActions";
 import DiningTablesList from "./DiningTablesList";
+import ViewController from "../../widgets/ViewController";
+import diningTableEditingStore from "./diningTableEditing/DiningTableEditorStore";
+import CRUDStatus from "../../utils/CRUDStatus";
+import DiningTableCreator from "./diningTableEditing/DiningTableCreator";
+import applicationStore from "../../stores/ApplicationStore";
+import dataStore from "../../stores/DataStore";
 
-export default class EveningEditor extends React.Component {
+export default class EveningEditor extends ViewController {
+
     constructor(props) {
-        super(props);
+        super(props, diningTableEditingStore, applicationStore, dataStore);
     }
 
     render() {
-        let data = this.props.data;
-        let evening = data.evening;
+        const evening = this.props.evening;
 
         return <Row grow>
             <Column>
                 <Row>
                     <Column>
-                        <Label style="large">Serata {beautifyDate(evening.day)}</Label>
+                        <Label style="large">Serata {beautifyDate(formatDate(evening.day))}</Label>
                     </Column>
                 </Row>
                 <Row grow>
                     <Column>
-                        <Row>
+                        <Row grow>
                             <Column>
-                                <Label>Elenco tavoli</Label>
-                            </Column>
-                        </Row>
-                        <Row>
-                            <Column>
-                                <DiningTablesList data={data}/>
+                                {this.buildEditorContent()}
                             </Column>
                         </Row>
                     </Column>
                 </Row>
-                <RoundButton
-                    commitAction={() => DiningTablesCreatorActions.beginDiningTable()}
-                    style="success"
-                    text="Nuovo tavolo"/>
             </Column>
         </Row>
     }
 
+    buildEditorContent() {
+        const tablesData = this.state.diningTableEditing;
+
+        if (tablesData.crudStatus === CRUDStatus.CREATE) {
+            return <DiningTableCreator
+                evening={this.state.data.evening}
+                settings={this.state.general.serverSettings}
+                tables={this.state.data.tables}
+                waiters={this.state.data.waiters}
+                table={tablesData.currentTable}/>;
+        }
+
+        return <Row grow>
+            <Column>
+                <DiningTablesList tables={this.props.evening.tables}/>
+            </Column>
+        </Row>
+    }
 }

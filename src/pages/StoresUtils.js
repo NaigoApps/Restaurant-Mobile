@@ -1,5 +1,5 @@
 import {CANC} from "../utils/Characters";
-import {iGet} from "../utils/Utils";
+import {Utils} from "../utils/Utils";
 
 export default class StoresUtils {
 
@@ -7,17 +7,22 @@ export default class StoresUtils {
     SELECT INPUT
      */
 
+    static ALL_ACTIONS = "ALL_ACTIONS";
+
     static initSelectInput(options) {
         return {
             values: options.values,
             id: options.id,
             renderer: options.renderer,
             label: options.label,
+            color: options.color,
             colorRenderer: options.colorRenderer,
+            rows: options.rows,
             cols: options.cols,
             value: options.value,
             visible: true,
             isValid: options.isValid,
+            page: 0,
             multiSelect: options.multiSelect,
             callback: options.callback
         };
@@ -26,27 +31,61 @@ export default class StoresUtils {
     static selectInputSelect(editor, value) {
         if (!editor.multiSelect) {
             editor.value = value;
-            return editor;
+        } else {
+            editor.value.push(value);
         }
-        editor.value.push(value);
-        return editor;
     }
 
     static selectInputDeselect(editor, value) {
         if (!editor.multiSelect) {
             editor.value = null;
-            return editor;
+        } else {
+            let index = editor.value.indexOf(value);
+            editor.value.splice(index, 1);
         }
-        let index = editor.value.indexOf(value);
-        editor.value.splice(index, 1);
-        return editor;
     }
 
     static selectPageChange(editor, page) {
-        return editor.set('page', page);
+        return editor.page = page;
     }
 
     static resetSelectInput(editor) {
+        editor.visible = false;
+    }
+
+    /*
+
+    COLOR INPUT
+
+     */
+
+    static initColorInput(options) {
+        return {
+            values: options.values,
+            label: options.label,
+            rows: options.rows,
+            cols: options.cols,
+            value: options.value,
+            visible: true,
+            isValid: options.isValid,
+            page: 0,
+            callback: options.callback
+        };
+    }
+
+    static colorInputSelect(editor, color) {
+        editor.value = color;
+    }
+
+    static colorInputDeselect(editor, value) {
+        editor.value = null;
+    }
+
+    static colorPageChange(editor, page) {
+        editor.page = page;
+    }
+
+    static resetColorInput(editor) {
         editor.visible = false;
     }
 
@@ -72,16 +111,16 @@ export default class StoresUtils {
         if (char === CANC) {
             editor.text = "0";
             editor.value = 0;
-        } else {
-            if (oldText === "0" || !editor.hit) {
-                oldText = "";
-            }
-            editor.hit = true;
-            let newText = oldText + char;
-            if (!isNaN(parseInt(newText))) {
-                editor.text = newText;
-                editor.value = parseInt(newText);
-            }
+            return;
+        }
+        if (oldText === "0" || !editor.hit) {
+            oldText = "";
+        }
+        editor.hit = true;
+        let newText = oldText + char;
+        if (!isNaN(parseInt(newText))) {
+            editor.text = newText;
+            editor.value = parseInt(newText);
         }
     }
 
@@ -90,10 +129,6 @@ export default class StoresUtils {
             editor.text = text;
             editor.hit = true;
             editor.value = parseInt(text);
-        }else{
-            editor.text = "0";
-            editor.hit = true;
-            editor.value = 0;
         }
     }
 
@@ -103,8 +138,60 @@ export default class StoresUtils {
             label: "",
             text: "",
             value: 0,
-            callback: () => {
-            }
+            callback: () => {}
+        };
+    }
+
+    /*
+    PERCENT INPUT
+     */
+
+    static initPercentInput(options) {
+        return {
+            visible: true,
+            label: options.label,
+            text: options.value ? options.value.toString() : "",
+            value: options.value,
+            callback: options.callback,
+            hit: false
+        };
+    }
+
+    static percentChar(editor, char) {
+        let oldText = editor.text;
+        if (char === CANC) {
+            editor.text = "0";
+            editor.value = 0;
+            return;
+        }
+        if (oldText === "0" || !editor.hit) {
+            oldText = "";
+        }
+        editor.hit = true;
+        let newText = oldText + char;
+        const newValue = parseInt(newText);
+        if (!isNaN(newValue) && newValue >= 0 && newValue <= 100) {
+            editor.text = newText;
+            editor.value = newValue;
+        }
+    }
+
+    static percentChange(editor, text) {
+        const newValue = parseInt(text);
+        if (!isNaN(newValue) && newValue >= 0 && newValue <= 100) {
+            editor.text = text;
+            editor.hit = true;
+            editor.value = newValue;
+        }
+    }
+
+    static resetPercentInput() {
+        return {
+            visible: false,
+            label: "",
+            text: "",
+            value: 0,
+            callback: () => {}
         };
     }
 
@@ -126,29 +213,28 @@ export default class StoresUtils {
     }
 
     static floatChar(editor, char) {
-        let oldText = editor.get('text');
+        let oldText = editor.text;
         if (char === CANC) {
-            return editor.set('text', "");
+            editor.text = "";
+            return;
         }
-        if (oldText === "0" || !editor.get('hit')) {
+        if (oldText === "0" || !editor.hit) {
             oldText = "";
         }
         let newText = oldText + char;
-        editor = editor.set('hit', true);
+        editor.hit = true;
         if (!isNaN(parseFloat(newText))) {
-            editor = editor.set('text', newText);
-            return editor.set('value', parseFloat(newText));
+            editor.text = newText;
+            editor.value = parseFloat(newText);
         }
-        return editor;
     }
 
     static floatChange(editor, text) {
         if (!isNaN(parseFloat(text))) {
-            editor = editor.set('text', text);
-            editor = editor.set('hit', true);
-            return editor.set('value', parseFloat(text));
+            editor.text = text;
+            editor.hit = true;
+            editor.value = parseFloat(text);
         }
-        return editor;
     }
 
     static resetFloatInput() {
@@ -157,22 +243,22 @@ export default class StoresUtils {
             label: "",
             text: "",
             value: 0,
-            callback: () => {
-            }
+            callback: () => {}
         };
     }
+
+    /**
+     * TextInput
+     */
 
     static initTextInput(options) {
         return {
             visible: true,
             label: options.label,
             value: options.value || "",
-            callback: options.callback
+            callback: options.callback,
+            checker: options.checker
         };
-    }
-
-    static textChange(editor, value) {
-        editor.value = value;
     }
 
     static resetTextInput() {
@@ -180,8 +266,7 @@ export default class StoresUtils {
             visible: false,
             label: "",
             value: "",
-            callback: () => {
-            }
+            callback: () => {}
         };
     }
 
@@ -197,16 +282,11 @@ export default class StoresUtils {
         return !isNaN(parseFloat(text));
     }
 
-    static settings(data, prop, def) {
-        if (data.get('settings')) {
-            return iGet(data, "settings.clientSettings." + prop) || def;
+    static option(data, optionName, def) {
+        if (data.general.settings) {
+            return data.general.settings.clientSettings[optionName] || def;
         }
         return def;
     }
-}
 
-export class EditorStatus {
-    static CREATING = "CREATING";
-    static EDITING = "EDITING";
-    static SURFING = "SURFING";
 }

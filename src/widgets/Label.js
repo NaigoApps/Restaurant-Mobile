@@ -8,9 +8,13 @@ export default class Label extends Component {
     }
 
     render() {
-        const style = this.props.style;
+        let style = TextStyles.forName(this.props.style);
+        if(this.props.color){
+            style.color = this.props.color;
+        }
+
         return (
-            <Text style={style ? TextStyles.forName(style) : TextStyles.forName()}>
+            <Text style={style}>
                 {this.props.children}
             </Text>
         );

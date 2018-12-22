@@ -1,13 +1,35 @@
 import asyncActionBuilder from '../../actions/RequestBuilder';
 import dispatcher from "../../dispatcher/SimpleDispatcher";
-import {RETRIEVE_EVENING} from "../../stores/generic/EveningStore";
+import eveningPageActions from "./EveningPageActions";
 
-export const EveningEditorActions = {
+export default class EveningEditorActions {
 
-    getSelectedEvening: () => asyncActionBuilder.get(
-        RETRIEVE_EVENING,
-        "evenings/selected"),
+    static GET_SELECTED = "GET_SELECTED";
 
-    deselectEvening: () => dispatcher.fireEnd(EveningEditingActionTypes.DESELECT),
+    static SELECT_DINING_TABLE = "SELECT_DINING_TABLE";
+    static SELECT_DINING_TABLE_PAGE = "SELECT_DINING_TABLE_PAGE";
 
-};
+    static SHOW_EVENING_REVIEW = "SHOW_EVENING_REVIEW";
+
+    static getSelectedEvening() {
+        asyncActionBuilder.get(
+            this.GET_SELECTED,
+            "evenings/selected")
+            .then(() => {
+                eveningPageActions.initEveningPage();
+            });
+    }
+
+    static selectPage(page) {
+        dispatcher.fireEnd(this.SELECT_DINING_TABLE_PAGE, page);
+    }
+
+    static selectDiningTable(table) {
+        dispatcher.fireEnd(this.SELECT_DINING_TABLE, table);
+    }
+
+    static showReview() {
+        dispatcher.fireEnd(this.SHOW_EVENING_REVIEW);
+    }
+
+}

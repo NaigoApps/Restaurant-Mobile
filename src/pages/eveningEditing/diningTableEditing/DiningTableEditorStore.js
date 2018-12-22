@@ -1,77 +1,188 @@
-import SubFeatureStore from "../../../stores/SubFeatureStore";
-import {EditorStatus} from "../../StoresUtils";
 import {EntitiesUtils} from "../../../utils/EntitiesUtils";
-import {DiningTablesEditorActionTypes} from "./DiningTablesEditorActions";
-import applicationStore from "../../../stores/ApplicationStore";
+import OrdinationsEditorActions from "./ordinationsEditing/OrdinationsEditorActions";
+import EveningEditorActions from "../EveningEditorActions";
+import AbstractStore from "../../../stores/AbstractStore";
+import DiningTablesEditorActions from "./DiningTablesEditorActions";
+import dataStore from "../../../stores/DataStore";
+import DiningTable from "../../../model/DiningTable";
+import CRUDStatus from "../../../utils/CRUDStatus";
+import {BillType} from "../../../model/Bill";
+import {DataActions, DataActionTypes} from "../../../actions/DataActions";
 
-class DiningTableEditorStore extends SubFeatureStore {
+export const DiningTableEditorTabs = {
+    ORDINATIONS: "ORDINATIONS",
+    REVIEW: "REVIEW",
+    BILLS: "BILLS",
+};
+
+const EVT_DINING_TABLES_CHANGED = "EVT_DINING_TABLES_CHANGED";
+
+class DiningTableEditorStore extends AbstractStore {
     constructor() {
-        super(applicationStore, "diningTableEditing");
-        this.status = EditorStatus.SURFING;
-        this.creatingOrdination = false;
+        super("diningTableEditing", EVT_DINING_TABLES_CHANGED, dataStore);
+        this.page = 0;
 
-        this.diningTable = null;
+        this.currentTable = null;
+        this.crudStatus = CRUDStatus.RETRIEVE;
+        this.tab = DiningTableEditorTabs.ORDINATIONS;
+        this.scrollReview = 0;
+        this.advanced = false;
+        this.merging = false;
+        this.mergeTarget = null;
+
+        this.billWizard = DiningTableEditorStore.initBillWizard(false);
     }
 
-    getState() {
+    static initBillWizard(visible) {
         return {
-            diningTable: this.diningTable,
-            status: this.status,
-            creatingOrdination: this.creatingOrdination
+            page: 0,
+            visible: visible,
+
+            orders: [],
+            quick: true,
+            split: 1,
+            finalTotal: 0,
+            type: BillType.RECEIPT,
+            percent: 0,
+            coverCharges: 0,
+            customer: null
+        };
+    }
+
+    getActionsClass() {
+        return DiningTablesEditorActions;
+    }
+
+    buildState() {
+        return {
+            scrollReview: this.scrollReview,
+            page: this.page,
+            currentTable: this.currentTable,
+            crudStatus: this.crudStatus,
+            billWizard: this.billWizard,
+            tab: this.tab,
+            advanced: this.advanced,
+
+            merging: this.merging,
+            mergeTarget: this.mergeTarget
+        };
+    }
+
+    getActionCompletedHandlers() {
+        const handlers = {};
+
+        handlers[DiningTablesEditorActions.SELECT_PAGE] = (page) => this.page = page;
+        this.addCRUDHandlers(handlers);
+        handlers[DiningTablesEditorActions.SELECT_DINING_TABLE_TAB] = (tab) => this.tab = tab;
+
+
+        handlers[OrdinationsEditorActions.CRUD.CREATE] = () => {
+            this.tab = DiningTableEditorTabs.ORDINATIONS;
+            this.scrollReview = 1;
+        };
+
+        handlers[OrdinationsEditorActions.CRUD.DELETE] = () => {
+            if(this.currentTable) {
+                this.currentTable = dataStore.getEntity(this.currentTable.uuid);
+            }
+        };
+
+        AbstractStore.assign(handlers,
+            [EveningEditorActions.GET_SELECTED,
+                EveningEditorActions.DESELECT_EVENING,
+                EveningEditorActions.SHOW_EVENING_REVIEW],
+            () => {
+            this.crudStatus = CRUDStatus.RETRIEVE;
+            this.currentTable = null;
+        });
+
+        return handlers;
+    }
+
+    addCRUDHandlers(handlers){
+
+        handlers[DiningTablesEditorActions.CRUD.BEGIN_CREATION] = () => {
+            this.currentTable = new DiningTable(EntitiesUtils.newDiningTable(), dataStore.getPool());
+            this.crudStatus = CRUDStatus.CREATE;
+        };
+
+        handlers[DiningTablesEditorActions.CRUD.UPDATE.LOCAL.CCS] = ccs => this.currentTable.coverCharges = ccs;
+        handlers[DiningTablesEditorActions.CRUD.UPDATE.LOCAL.WAITER] = w => this.currentTable.waiter = w;
+        handlers[DiningTablesEditorActions.CRUD.UPDATE.LOCAL.TABLE] = t => this.currentTable.table = t;
+
+        AbstractStore.assign(handlers, [
+            DiningTablesEditorActions.CRUD.UPDATE.REMOTE.CCS,
+            DiningTablesEditorActions.CRUD.UPDATE.REMOTE.WAITER,
+            DiningTablesEditorActions.CRUD.UPDATE.REMOTE.TABLE
+        ], (table) => this.currentTable = dataStore.getEntity(table.uuid));
+
+        handlers[DiningTablesEditorActions.CRUD.ABORT_CREATION] = () => {
+            this.currentTable = null;
+            this.crudStatus = CRUDStatus.RETRIEVE;
+        };
+
+        handlers[DiningTablesEditorActions.CRUD.CREATE] = (table) => {
+            this.currentTable = dataStore.getEntity(table.uuid);
+            this.crudStatus = CRUDStatus.UPDATE;
+            this.advanced = false;
+            this.tab = DiningTableEditorTabs.REVIEW;
+        };
+
+        handlers[DiningTablesEditorActions.CRUD.SELECT] = (table) => {
+            this.currentTable = table;
+            this.crudStatus = CRUDStatus.UPDATE;
+            this.advanced = false;
+            this.tab = DiningTableEditorTabs.REVIEW;
+        };
+
+        handlers[DiningTablesEditorActions.CRUD.DESELECT] = () => {
+            this.currentTable = null;
+            this.crudStatus = CRUDStatus.RETRIEVE;
+        };
+
+        handlers[DiningTablesEditorActions.CRUD.BEGIN_DELETION] = () => {
+            this.crudStatus = CRUDStatus.DELETE;
+        };
+
+        handlers[DiningTablesEditorActions.CRUD.ABORT_DELETION] = () => {
+            this.crudStatus = CRUDStatus.UPDATE;
+        };
+
+        handlers[DiningTablesEditorActions.CRUD.DELETE] = () => {
+            this.currentTable = null;
+            this.crudStatus = CRUDStatus.RETRIEVE;
+        };
+
+        handlers[DataActionTypes.LOAD_DINING_TABLES] = () => {
+            this.refreshTable();
+        };
+
+        handlers[DiningTablesEditorActions.SHOW_ADVANCED] = () => this.advanced = true;
+        handlers[DiningTablesEditorActions.HIDE_ADVANCED] = () => this.advanced = false;
+
+        handlers[DiningTablesEditorActions.MERGE.BEGIN] = () => this.merging = true;
+        handlers[DiningTablesEditorActions.MERGE.SELECT_TARGET] = (target) => this.mergeTarget = target;
+        handlers[DiningTablesEditorActions.MERGE.ABORT] = () => {
+            this.merging = false;
+            this.mergeTarget = false;
+        };
+
+        handlers[DiningTablesEditorActions.MERGE.CONFIRM] = (mergedTable, oldTable) => {
+            this.currentTable = dataStore.getEntity(mergedTable.uuid);
+            this.crudStatus = CRUDStatus.UPDATE;
+            this.tab = DiningTableEditorTabs.REVIEW;
+            this.merging = false;
+            this.mergeTarget = null;
+        };
+
+    }
+
+    refreshTable(){
+        if(this.currentTable) {
+            this.currentTable = dataStore.getEntity(this.currentTable.uuid);
         }
     }
 
-    getActions() {
-        return Object.values(DiningTablesEditorActionTypes);
-    }
-
-    handleCompletedAction(action) {
-        let changed = true;
-        switch (action.type) {
-            case DiningTablesEditorActionTypes.BEGIN_ORDINATION_CREATION:
-                this.creatingOrdination = true;
-                break;
-            case DiningTablesEditorActionTypes.CREATE_ORDINATION:
-            case DiningTablesEditorActionTypes.ABORT_ORDINATION_CREATION:
-                this.creatingOrdination = false;
-                break;
-            case DiningTablesEditorActionTypes.SELECT_DINING_TABLE:
-                this.diningTable = action.body;
-                this.status = EditorStatus.EDITING;
-                break;
-            case DiningTablesEditorActionTypes.DESELECT_DINING_TABLE:
-            case DiningTablesEditorActionTypes.ABORT_DINING_TABLE_CREATION:
-                this.creatingOrdination = false;
-                this.diningTable = null;
-                this.status = EditorStatus.SURFING;
-                break;
-            case DiningTablesEditorActionTypes.BEGIN_DINING_TABLE_CREATION:
-                this.diningTable = EntitiesUtils.newDiningTable();
-                this.status = EditorStatus.CREATING;
-                break;
-            case DiningTablesEditorActionTypes.CREATE_DINING_TABLE:
-                this.diningTable = action.body.uuid;
-                this.status = EditorStatus.EDITING;
-                this.creatingOrdination = false;
-                break;
-            //CoverCharges
-            case DiningTablesEditorActionTypes.CONFIRM_CREATOR_CCS:
-                this.diningTable.coverCharges = action.body;
-                break;
-            //Waiter
-            case DiningTablesEditorActionTypes.CONFIRM_CREATOR_WAITER:
-                this.diningTable.waiter = action.body;
-                break;
-            //Table
-            case DiningTablesEditorActionTypes.CONFIRM_CREATOR_TABLE:
-                this.diningTable.table = action.body;
-                break;
-            default:
-                changed = false;
-                break;
-        }
-        return changed;
-    }
 }
 
 const diningTableEditingStore = new DiningTableEditorStore();

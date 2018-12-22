@@ -37,6 +37,12 @@ export function beautifyDate(date) {
     return "";
 }
 
+export function formatTime(date) {
+    let formattedDate = new Date(date);
+    formattedDate.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+    return beautifyTime(formattedDate.toJSON());
+}
+
 export function beautifyTime(date) {
     if (date) {
         return date.substr(date.indexOf("T") + 1, 5);

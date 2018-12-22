@@ -1,9 +1,14 @@
 import dispatcher from "../dispatcher/SimpleDispatcher";
+import Settings from "../pages/settings/Settings";
+import fetch from 'react-native-fetch-polyfill';
 
 class RequestBuilder {
 
-    constructor() {
-        this.BASE_URL = "http://192.168.43.40:8080/restaurant/rest/";
+    static BASE_URL = "http://localhost:8080/restaurant/rest/";
+
+    setSettings(settings) {
+        RequestBuilder.BASE_URL = "http://" + settings[Settings.KEYS.SERVER_IP] + ":" + settings[Settings.KEYS.SERVER_PORT]
+            + "/restaurant/rest/";
     }
 
     buildParams(params) {
@@ -20,39 +25,15 @@ class RequestBuilder {
         if (params) {
             resource += this.buildParams(params);
         }
-
-        console.log("Request to " + this.BASE_URL + resource);
         dispatcher.fireStart(action);
 
         return new Promise((resolve, reject) => {
-            fetch(this.BASE_URL + resource, {
+            fetch(RequestBuilder.BASE_URL + resource, {
                 method: "GET",
-                mode: 'cors'
-            }).then((response) => {
-                if (response.ok) {
-                    let contentType = response.headers.get("content-type");
-                    if (contentType && contentType.includes("application/json")) {
-                        response.json().then((result) => {
-                            dispatcher.fireEnd(action, result);
-                            resolve(result);
-                        });
-                    } else {
-                        response.text().then((result) => {
-                            dispatcher.fireEnd(action, result);
-                            resolve(result);
-                        });
-                    }
-                } else {
-                    console.warn("Something bad happened");
-                    response.text().then((message) => {
-                        dispatcher.fireError(action, message);
-                        reject();
-                    });
-                }
-            }).catch((error) => {
-                dispatcher.fireFailure(action, error);
-                reject();
-            });
+                mode: 'cors',
+                timeout: 5 * 1000
+            }).then(response => RequestBuilder.handleFetchResponse(response, action, resolve, reject))
+                .catch(error => RequestBuilder.handleFetchError(error, action, reject));
         })
     }
 
@@ -61,7 +42,7 @@ class RequestBuilder {
 
         return new Promise((resolve, reject) => {
             fetch(
-                this.BASE_URL + resource,
+                RequestBuilder.BASE_URL + resource,
                 {
                     method: "POST",
                     mode: 'cors',
@@ -70,45 +51,20 @@ class RequestBuilder {
                     },
                     body: typeof(target) === "string" ? target : JSON.stringify(target)
                 }
-            ).then((response) => {
-                if (response.ok) {
-
-                    let contentType = response.headers.get("content-type");
-                    if (contentType && contentType.includes("application/json")) {
-                        response.json().then((result) => {
-                            dispatcher.fireEnd(action, result);
-                            resolve(result);
-                        });
-                    } else {
-                        response.text().then((result) => {
-                            dispatcher.fireEnd(action, result);
-                            resolve(result);
-                        });
-                    }
-                } else {
-                    response.text().then((message) => {
-                        console.warn("Error: " + message)
-                        dispatcher.fireError(action, message);
-                        reject();
-                    });
-                }
-            }).catch((error) => {
-                dispatcher.fireFailure(action, error);
-                reject();
-            });
-        })
+            ).then(response => RequestBuilder.handleFetchResponse(response, action, resolve, reject, target))
+                .catch(error => RequestBuilder.handleFetchError(error, action, reject));
+        });
     }
 
     put(action, resource, target, params) {
         dispatcher.fireStart(action);
-
         if (params) {
             resource += this.buildParams(params);
         }
 
         return new Promise((resolve, reject) => {
             fetch(
-                this.BASE_URL + resource,
+                RequestBuilder.BASE_URL + resource,
                 {
                     method: "PUT",
                     mode: 'cors',
@@ -117,31 +73,8 @@ class RequestBuilder {
                     },
                     body: typeof(target) === "string" ? target : JSON.stringify(target)
                 }
-            ).then((response) => {
-                if (response.ok) {
-
-                    let contentType = response.headers.get("content-type");
-                    if (contentType && contentType.includes("application/json")) {
-                        response.json().then((result) => {
-                            dispatcher.fireEnd(action, result);
-                            resolve(result);
-                        });
-                    } else {
-                        response.text().then((result) => {
-                            dispatcher.fireEnd(action, result);
-                            resolve(result);
-                        });
-                    }
-                } else {
-                    response.text().then((message) => {
-                        dispatcher.fireError(action, message);
-                        reject();
-                    });
-                }
-            }).catch((error) => {
-                dispatcher.fireFailure(action, error);
-                reject();
-            });
+            ).then(response => RequestBuilder.handleFetchResponse(response, action, resolve, reject))
+                .catch(error => RequestBuilder.handleFetchError(error, action, reject));
         })
 
     }
@@ -151,7 +84,7 @@ class RequestBuilder {
 
         return new Promise((resolve, reject) => {
             fetch(
-                this.BASE_URL + resource,
+                RequestBuilder.BASE_URL + resource,
                 {
                     method: "DELETE",
                     mode: 'cors',
@@ -160,32 +93,36 @@ class RequestBuilder {
                     },
                     body: typeof(target) === "string" ? target : JSON.stringify(target)
                 }
-            ).then((response) => {
-                if (response.ok) {
+            ).then(response => RequestBuilder.handleFetchResponse(response, action, resolve, reject))
+                .catch(error => RequestBuilder.handleFetchError(error, action, reject));
+        })
+    }
 
-                    let contentType = response.headers.get("content-type");
-                    if (contentType && contentType.includes("application/json")) {
-                        response.json().then((result) => {
-                            dispatcher.fireEnd(action, result);
-                            resolve(result);
-                        });
-                    } else {
-                        response.text().then((result) => {
-                            dispatcher.fireEnd(action, result);
-                            resolve(result);
-                        });
-                    }
-                } else {
-                    response.text().then((message) => {
-                        dispatcher.fireError(action, message);
-                        reject();
-                    });
-                }
-            }).catch((error) => {
-                dispatcher.fireFailure(action, error);
+    static handleFetchResponse(response, action, resolve, reject, target) {
+        if (response.ok) {
+            let contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                response.json().then((result) => {
+                    dispatcher.fireEnd(action, result, target);
+                    resolve(result);
+                });
+            } else {
+                response.text().then((result) => {
+                    dispatcher.fireEnd(action, result, target);
+                    resolve(result);
+                });
+            }
+        } else {
+            response.text().then((message) => {
+                dispatcher.fireError(action, message);
                 reject();
             });
-        })
+        }
+    }
+
+    static handleFetchError(error, action, reject) {
+        dispatcher.fireFailure(action, error);
+        reject();
     }
 }
 

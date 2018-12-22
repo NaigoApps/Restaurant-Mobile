@@ -2,110 +2,98 @@ import React from 'react';
 import OrdinationsUtils from "../OrdinationsUtils";
 import Column from "../../../widgets/Column";
 import Row from "../../../widgets/Row";
-import DiningTablesUtils from "./DiningTablesUtils";
+import {FlatList} from "react-native";
 import Label from "../../../widgets/Label";
-import {BackHandler, ScrollView} from "react-native";
-import RoundButton from "../../../widgets/RoundButton";
-import {DiningTablesEditorActions} from "../diningTableEditing/DiningTablesEditorActions";
-import {findByUuid, uuid} from "../../../utils/Utils";
+import OrdinationReviewComponent from "../diningTableEditing/ordinationsEditing/review/OrdinationReviewComponent";
+
 
 export default class DiningTableReview extends React.Component {
     constructor(props) {
         super(props);
     }
 
-    componentDidMount() {
-        BackHandler.addEventListener('hardwareBackPress', this.handleBackPress);
-    }
-
-    componentWillUnmount() {
-        BackHandler.removeEventListener('hardwareBackPress', this.handleBackPress);
-    }
-
-    handleBackPress() {
-        setImmediate(() => DiningTablesEditorActions.deselect());
-        return true;
-    }
-
     render() {
-        let data = this.props.data;
-        let orders = [];
-        let evening = data.evening;
-        let tableUuid = data.diningTableEditing.diningTable;
-        let table = findByUuid(data.evening.diningTables, tableUuid);
+        let reviewContent = this.buildDetailedReview();
+        return <Row grow>
+            <Column>
+                {reviewContent}
+            </Column>
+        </Row>
+    }
 
-        table.ordinations.forEach(ordination => {
-            ordination.orders.forEach(order => {
-                orders.push(order);
-            });
-        });
-        let allOrders = orders;
-        let groups = DiningTablesUtils.implode(orders);
-        groups = OrdinationsUtils.sortByDish(groups, data.dishes, data.additions);
-        let ordersComponents = groups.map(grp => {
-            let left = OrdinationsUtils.renderImplodedOrder(grp, data.dishes, data.additions);
-            let textColor = "secondary";
-            // if (grp.orderType.price === 0) {
-            //     textColor = "red";
-            // }
-            return <Row key={uuid()}>
-                <Column>
-                    <Label
-                        style={textColor + ",left"}>{left} {OrdinationsUtils.formatGroupPrice(grp)}</Label>
-                </Column>
-            </Row>;
-        });
-        let coverCharges = table.coverCharges;
-        let leftCoverCharges = coverCharges + " ";
-        if (coverCharges > 1) {
-            leftCoverCharges += " COPERTI";
-        } else {
-            leftCoverCharges += " COPERTO";
+
+    buildDetailedReview() {
+        const table = this.props.table;
+
+        let allOrders = table.listOrders();
+
+        let coverChargesPrice = 0;
+        let coverChargesEditor;
+
+        if (this.props.settings.coverCharges) {
+            coverChargesEditor = this.buildCoverChargesComponent();
+            coverChargesPrice = table.getCoverChargesPrice();
         }
-        let coverChargesPrice = coverCharges * evening.coverCharge;
-        //let rightCoverCharges = OrdinationsUtils.formatPrice(coverChargesPrice);
+
         let total = OrdinationsUtils.total(allOrders) + coverChargesPrice;
 
         return <Row grow>
             <Column>
+                {coverChargesEditor}
+                <FlatList
+                    data={table.ordinations}
+                    renderItem={item => DiningTableReview.renderDetailedReviewComponent(item)}>
+                </FlatList>
                 <Row>
                     <Column>
-                        <Label
-                            style="large,center">Riepilogo {DiningTablesUtils.renderDiningTable(table, data.tables, data.waiters)}</Label>
+                        <Label>TOTALE: {OrdinationsUtils.formatPrice(total)}</Label>
                     </Column>
                 </Row>
-                <Row grow>
-                    <Column>
-                        <Row>
-                            <Column>
-                                <Label style="left">{leftCoverCharges} {/*rightCoverCharges*/""}</Label>
-                            </Column>
-                        </Row>
-                        <Row grow>
-                            <Column>
-                                <ScrollView>
-                                    {ordersComponents}
-                                </ScrollView>
-                            </Column>
-                        </Row>
-                        <Row>
-                            <Column>
-                                <Label
-                                    style="right,large,red">TOTALE: {OrdinationsUtils.formatPrice(total)}</Label>
-                            </Column>
-                        </Row>
-                        <Row>
-                            <Column>
-                                <RoundButton
-                                    style="success"
-                                    text="Nuova comanda"
-                                    commitAction={() => DiningTablesEditorActions.beginOrdinationCreation()}/>
-                            </Column>
-                        </Row>
-                    </Column>
-                </Row>
+                {/*<OkCancelModal*/}
+                    {/*message="Eliminare la comanda?"*/}
+                    {/*confirmType="danger"*/}
+                    {/*abortType="secondary"*/}
+                    {/*visible={this.props.ordinationEditing.crudStatus === CRUDStatus.DELETE}*/}
+                    {/*confirmAction={() => OrdinationsEditorActions.deleteOrdination(this.props.ordinationEditing.currentOrdination)}*/}
+                    {/*abortAction={() => OrdinationsEditorActions.abortOrdinationDeletion()}*/}
+                {/*/>*/}
+                {/*<OkCancelModal*/}
+                    {/*message="Inviare annullamento comanda?"*/}
+                    {/*confirmType="danger"*/}
+                    {/*abortType="secondary"*/}
+                    {/*visible={this.props.ordinationEditing.aborting}*/}
+                    {/*confirmAction={() => OrdinationsEditorActions.abortOrdination(this.props.ordinationEditing.currentOrdination)}*/}
+                    {/*abortAction={() => OrdinationsEditorActions.abortOrdinationAbortion()}*/}
+                {/*/>*/}
             </Column>
-        </Row>;
+        </Row>
+    }
+
+    static renderDetailedReviewComponent(item){
+        const obj = item.item;
+
+        return <Row ofList>
+                <Column>
+                    <OrdinationReviewComponent
+                        title={OrdinationsUtils.renderOrdination(obj)}
+                        ordination={obj}
+                    />
+                </Column>
+            </Row>;
+    }
+
+
+    buildCoverChargesComponent() {
+        const table = this.props.table;
+
+        let ccs = table.coverCharges;
+        let ccsText = ccs.toString() + ((ccs > 1) ? " COPERTI" : " COPERTO");
+        let ccsPrice = ccs * table.evening.coverCharge;
+        return <Row>
+            <Column auto><Label>{ccsText}</Label></Column>
+            <Column/>
+            <Column auto><Label>{OrdinationsUtils.formatPrice(ccsPrice)}</Label></Column>
+        </Row>
     }
 
 }

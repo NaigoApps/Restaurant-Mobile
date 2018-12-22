@@ -27,7 +27,6 @@ export default class IntegerEditor extends Component {
     render() {
         return <RoundButton
             disabled={this.props.disabled}
-            style="left"
             text={this.renderLabel()}
             commitAction={() => ApplicationActions.showIntegerInput(this.props.options)}
         />;

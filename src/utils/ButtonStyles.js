@@ -4,7 +4,8 @@ export const colors = {
     success: "#5cb85c",
     danger: "#d43f3a",
     warning: "#f0ad4e",
-    info: "#5bc0de"
+    info: "#5bc0de",
+    disabled: "#dddddd"
 };
 
 export const borders = {
@@ -21,42 +22,71 @@ export default class ButtonStyles {
     static styleTypes = {
         aligns: {
             left: {
-                justifyContent: 'center'
+                display: 'flex',
+                justifyContent: 'flex-start'
             },
             center: {
+                display: 'flex',
                 justifyContent: 'center'
             },
             right: {
-                justifyContent: 'center'
+                display: 'flex',
+                justifyContent: 'flex-end'
             }
         },
         appearances: {
             success: {
+                color: "#FFFFFF",
                 backgroundColor: colors.success,
                 borderColor: borders.success
             },
             danger: {
+                color: "#FFFFFF",
                 backgroundColor: colors.danger,
                 borderColor: borders.danger
             },
             warning: {
+                color: "#000000",
                 backgroundColor: colors.warning,
                 borderColor: borders.warning
             },
             secondary: {
+                color: "#000000",
                 backgroundColor: colors.secondary,
                 borderColor: borders.secondary
             },
             disabled: {
-                backgroundColor: "#DDDDDD",
-                borderColor: "#DDDDDD"
+                color: "#999999",
+                backgroundColor: colors.disabled,
+                borderColor: colors.disabled
             },
             primary: {
+                color: "#FFFFFF",
                 backgroundColor: colors.primary,
                 borderColor: borders.primary
+            },
+            info: {
+                color: "#FFFFFF",
+                backgroundColor: colors.info,
+                borderColor: borders.info
             }
         },
         sizes: {
+            icon: {
+                height: 48,
+                width: 48,
+                paddingLeft: 4,
+                paddingRight: 4,
+                marginTop: 4,
+                marginBottom: 4,
+                marginLeft: 4,
+                marginRight: 4
+            },
+            small: {
+                height: 32,
+                paddingLeft: 4,
+                paddingRight: 4
+            },
             default: {
                 height: 64,
                 paddingLeft: 8,
@@ -64,9 +94,17 @@ export default class ButtonStyles {
             }
         },
         shapes: {
+            iconRound: {
+                borderWidth: 1,
+                borderRadius: 16
+            },
             round: {
                 borderWidth: 1,
                 borderRadius: 12
+            },
+            iconCircle: {
+                borderWidth: 1,
+                borderRadius: 24
             },
             flat: {
                 borderWidth: 1,

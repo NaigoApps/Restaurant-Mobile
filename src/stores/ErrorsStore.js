@@ -1,42 +1,46 @@
-import AbstractStore from "./RootFeatureStore";
-import {ACT_CLEAR_ERROR_MESSAGES} from "../actions/ActionTypes";
+import AbstractStore from "./AbstractStore";
+import ErrorActions from "./ErrorActions";
+import EveningEditorActions from "../pages/eveningEditing/EveningEditorActions";
 
 const EVT_ERRORS_STORE_CHANGED = "EVT_ERRORS_STORE_CHANGED";
 
 class ErrorsStore extends AbstractStore {
     constructor() {
-        super(EVT_ERRORS_STORE_CHANGED);
+        super("error", EVT_ERRORS_STORE_CHANGED);
         this.lastMessage = null;
     }
 
     handleErrorAction(action) {
-        this.lastMessage = action.body;
-        return true;
-    }
-
-    handleCompletedAction(action){
-        let changed = true;
-        switch (action.type){
-            case ACT_CLEAR_ERROR_MESSAGES:
-                this.clearMessages();
-                break;
-            default:
-                changed = false;
-                break;
+        if (action.type !== EveningEditorActions.GET_SELECTED) {
+            this.lastMessage = action.body;
         }
-        return changed;
+        return true;
     }
 
     handleFailedAction(action) {
-        this.lastMessage = "Impossibile comunicare con il server";
+        this.lastMessage = "Errore di connessione";
         return true;
     }
 
-    getMessage(){
-        return this.lastMessage;
+    getActionsClass() {
+        return ErrorActions;
     }
 
-    clearMessages(){
+    getActionCompletedHandlers() {
+        const handlers = {};
+
+        handlers[ErrorActions.CLEAR_ERROR_MESSAGES] = () => this.clearMessages();
+
+        return handlers;
+    }
+
+    buildState() {
+        return {
+            message: this.lastMessage
+        }
+    }
+
+    clearMessages() {
         this.lastMessage = null;
     }
 }

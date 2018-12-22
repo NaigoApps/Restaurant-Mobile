@@ -1,101 +1,121 @@
 import React from 'react';
 import Row from "../../../widgets/Row";
 import Column from "../../../widgets/Column";
-import {DiningTablesCreatorActions} from "./DiningTablesCreatorActions";
-import IntegerEditor from "../../../components/widgets/inputs/IntegerEditor";
+import RoundButton from "../../../widgets/RoundButton";
+import DiningTablesEditorActions from "./DiningTablesEditorActions";
+import DiningTableStatus from "../../../model/DiningTableStatus";
+import BaseEntity from "../../../model/BaseEntity";
+import RenderingData from "../../../components/widgets/inputs/RenderingData";
+import IntegerInput from "../../../components/widgets/inputs/IntegerInput";
 import SelectEditor from "../../../components/widgets/inputs/SelectEditor";
-import {BackHandler} from "react-native";
-import OkCancelView from "../../../widgets/OkCancelView";
+import Dimensions from "../../../utils/Dimensions";
+import Label from "../../../widgets/Label";
 
 export default class DiningTableCreator extends React.Component {
     constructor(props) {
         super(props);
     }
 
-    componentDidMount() {
-        BackHandler.addEventListener('hardwareBackPress', this.handleBackPress);
-    }
-
-    componentWillUnmount() {
-        BackHandler.removeEventListener('hardwareBackPress', this.handleBackPress);
-    }
-
-    handleBackPress() {
-        setImmediate(() => DiningTablesCreatorActions.onAbort());
-        return true;
-    }
-
     render() {
-        const data = this.props.data;
-        const dTable = data.diningTableEditing.diningTable;
+        const settings = this.props.settings;
+        const table = this.props.table;
+        const waiters = this.props.waiters;
+        const tables = this.props.tables;
 
-        const waiters = this.props.data.waiters;
-        const waiter = dTable.waiter;
+        let coverChargesComponent = this.buildCoverChargesComponent(settings);
 
-        const tables = this.props.data.tables;
-        const table = dTable.table;
-
-        return <OkCancelView
-            valid={dTable.waiter && dTable.table && dTable.coverCharges > 0}
-            onAbort={() => DiningTablesCreatorActions.onAbort()}
-            onConfirm={() => DiningTablesCreatorActions.onConfirm(dTable)}>
-            <Row>
-                <Column>
-                    <IntegerEditor
-                        options={{
-                            label: "Coperti",
-                            value: dTable.coverCharges,
-                            callback: result => DiningTablesCreatorActions.confirmCoverCharges(null, result)
-                        }}
-                    />
-                </Column>
-            </Row>
-            <Row ofList>
-                <Column>
-                    <SelectEditor
-                        options={{
-                            cols: 2,
-                            label: "Cameriere",
-                            values: waiters,
-                            renderer: w => w ? w.name : "?",
-                            value: waiter,
-                            callback: result => DiningTablesCreatorActions.confirmWaiter(null, result)
-                        }}
-                    />
-                </Column>
-            </Row>
-            <Row ofList>
-                <Column>
-                    <SelectEditor
-                        options={{
-                            cols: 3,
-                            label: "Tavolo",
-                            values: tables,
-                            renderer: t => t ? t.name : "?",
-                            colorRenderer: t => this.renderDiningTableColor(t),
-                            value: table,
-                            callback: result => DiningTablesCreatorActions.confirmTable(null, result)
-                        }}
-                    />
-                </Column>
-            </Row>
-        </OkCancelView>
+        return <Row grow>
+            <Column>
+                <Row grow>
+                    <Column>
+                        <Row>
+                            <Column><Label style="bold,large">Nuovo tavolo</Label></Column>
+                        </Row>
+                        {coverChargesComponent}
+                        <Row ofList>
+                            <Column>
+                                <SelectEditor
+                                    options={{
+                                        label: "Cameriere",
+                                        values: waiters,
+                                        renderer: w => w ? w.name : "",
+                                        isValid: waiter => !!waiter,
+                                        value: table.waiter,
+                                        callback: waiter => DiningTablesEditorActions.setEditorWaiter(waiter)
+                                    }}
+                                />
+                            </Column>
+                        </Row>
+                        <Row ofList>
+                            <Column>
+                                <SelectEditor
+                                    options={{
+                                        label: "Tavolo",
+                                        cols: 2,
+                                        values: tables,
+                                        isValid: table => !!table,
+                                        renderer: t => this.renderDiningTable(t),
+                                        value: table.table,
+                                        callback: rTable => DiningTablesEditorActions.setEditorTable(rTable)
+                                    }}
+                                />
+                            </Column>
+                        </Row>
+                    </Column>
+                </Row>
+                <Row justify="center">
+                    <Column mr={Dimensions.smallSpace}>
+                        <RoundButton
+                            text="Conferma"
+                            style="success"
+                            disabled={!this.isValid(settings)}
+                            commitAction={() => DiningTablesEditorActions.doCreate(table)}
+                        />
+                    </Column>
+                    <Column ml={Dimensions.smallSpace}>
+                        <RoundButton
+                            text="Annulla"
+                            style="danger"
+                            commitAction={() => DiningTablesEditorActions.abortCreation()}
+                        />
+                    </Column>
+                </Row>
+            </Column>
+        </Row>
     }
 
-    renderDiningTableColor(table) {
+    buildCoverChargesComponent(settings) {
+        if (settings.coverCharges) {
+            return <Row>
+                <Column>
+                    <IntegerInput
+                        label="Coperti"
+                        value={this.props.table.coverCharges}
+                        commitAction={ccs => DiningTablesEditorActions.setEditorCoverCharges(ccs)}
+                    />
+                </Column>
+            </Row>
+        }
+        return null;
+    }
 
-        let diningTables = this.props.data.evening.diningTables;
+    isValid(settings) {
+        const table = this.props.table;
+        return table.waiter && table.table && (!settings.coverCharges || table.coverCharges > 0);
+    }
+
+    renderDiningTable(table) {
+        let diningTables = this.props.evening.tables;
         let color = "secondary";
-        diningTables.filter(dTable => dTable.table === table.uuid)
+        diningTables.filter(dTable => BaseEntity.equals(dTable.table, table))
             .forEach(dTable => {
-                if (dTable.status === "APERTO") {
+                if (dTable.status === DiningTableStatus.OPEN) {
                     color = "danger";
                 }
-                if (dTable.status === "IN CHIUSURA") {
+                if (dTable.status === DiningTableStatus.CLOSING) {
                     color = "warning";
                 }
             });
-        return color;
+        return new RenderingData(table ? table.name : "", color);
     }
-
 }

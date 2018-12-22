@@ -1,20 +1,21 @@
-import asyncActionBuilder from "../../actions/RequestBuilder";
-import {ApplicationActions} from "../../actions/ApplicationActions";
-import entitiesActions from "../../generic/EntitiesActions";
-import {RETRIEVE_EVENING} from "../../stores/generic/EveningStore";
+import {DataActions} from "../../actions/DataActions";
+import {SettingsPageActions} from "../settings/SettingsPageActions";
 
 class EveningPageActions {
 
-    initEveningPage(){
-        this.retrieveSelectedEvening();
+    initEveningPage() {
+        DataActions.loadDiningTables();
 
-        entitiesActions.retrieveData();
-        ApplicationActions.loadSettings();
+        DataActions.loadWaiters();
+        DataActions.loadPhases();
+        DataActions.loadAdditions();
+        DataActions.loadCustomers();
+        DataActions.loadRestaurantTables();
+        DataActions.loadDishes();
+        DataActions.loadCategories();
+
     }
 
-    retrieveSelectedEvening() {
-        asyncActionBuilder.get(RETRIEVE_EVENING, 'evenings/selected');
-    }
 }
 
 const eveningPageActions = new EveningPageActions();

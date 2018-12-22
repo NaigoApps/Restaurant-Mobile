@@ -1,6 +1,25 @@
 import {uuid} from "./Utils";
+import DishStatus from "../model/DishStatus";
+import {formatDate} from "../components/widgets/inputs/DateInput";
+
+export const NEW_CUSTOMER_UUID = "new-customer-uuid";
 
 export class EntitiesUtils {
+    static nameComparator(e1, e2) {
+        return e1.name.localeCompare(e2.name);
+    }
+
+    static defaultComparator(property, inverse){
+        return (e1, e2) => {
+            if (e1[property] < e2[property]) {
+                return inverse ? +1 : -1;
+            } else if (e1[property] > e2[property]) {
+                return inverse ? -1 : +1;
+            }
+            return 0;
+        }
+    }
+
     static newDiningTable() {
         return {
             coverCharges: 0,
@@ -10,40 +29,51 @@ export class EntitiesUtils {
             bills: [],
             openingTime: null,
             status: "APERTO"
-        };
+        }
     }
 
-    static newOrdination() {
+    static newOrdination(table) {
         return {
+            uuid: uuid(),
+            table: table.uuid,
             orders: []
         };
     }
 
-    static newOrder(dish, phase) {
+    static newBill(table) {
+        return {
+            uuid: uuid(),
+            table: table.uuid,
+            orders: [],
+            total: 0,
+            coverCharges: 0
+        };
+    }
+
+    static newOrder(dish, price, phase, ordination, additions, notes) {
         return {
             uuid: uuid(),
             dish: dish.uuid,
-            price: dish.price,
-            phase: phase,
-            notes: null,
-            additions: []
+            price: price,
+            phase: phase.uuid ,
+            additions: additions.map(addition => addition.uuid) || [],
+            notes: notes,
+            ordination: ordination.uuid
         };
     }
 
     static duplicateOrder(order) {
-        return {
-            uuid: uuid(),
-            dish: order.dish,
-            price: order.price,
-            phase: order.phase,
-            additions: []
-        }
+        return order.set('uuid', uuid());
     }
 
     static renderCustomer(customer) {
         if (customer) {
-            return customer.get('surname') + " " + customer.get('name');
+            return customer.surname + " " + customer.name;
         }
         return "?";
+    }
+
+    static renderEvening(evening){
+        return "Serata " + formatDate(evening.day);
     }
 }

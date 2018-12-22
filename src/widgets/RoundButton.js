@@ -64,7 +64,7 @@ export default class RoundButton extends Component {
             onLongPress={() => this.longClickAction()}
             onPress={() => this.clickAction()}>
             <View style={ButtonStyles.forName(style)}>
-                <Label style={style}>{this.props.text}</Label>
+                <Label style={this.props.textStyle || style}>{this.props.text}</Label>
             </View>
         </TouchableOpacity>
     }

@@ -1,52 +1,38 @@
+import {Immersive} from 'react-native-immersive';
 import React from 'react';
-import {Text} from 'react-native';
-import eveningPageActions from "./pages/eveningEditing/EveningPageActions";
 import Label from "./widgets/Label";
 import Column from "./widgets/Column";
-import ApplicationSelectInput from "./components/widgets/ApplicationSelectInput";
-import ApplicationIntegerInput from "./components/widgets/ApplicationIntegerInput";
-import ApplicationTextInput from "./components/widgets/ApplicationTextInput";
-import applicationStore, {Screens} from "./stores/ApplicationStore";
-import ApplicationLoadingDialog from "./components/widgets/ApplicationLoadingDialog";
+import applicationStore from "./stores/ApplicationStore";
 import EveningEditor from "./pages/eveningEditing/EveningEditor";
-import DiningTableCreator from "./pages/eveningEditing/diningTableEditing/DiningTableCreator";
-import OrdinationReview from "./pages/eveningEditing/diningTableEditing/ordinationsEditing/OrdinationReview";
-import OrdinationCreator from "./pages/eveningEditing/diningTableEditing/ordinationsEditing/OrdinationCreator";
-import DiningTableReview from "./pages/eveningEditing/tables/DiningTableReview";
-import OrderEditor from "./pages/eveningEditing/diningTableEditing/ordinationsEditing/OrderEditor";
+import ViewController from "./widgets/ViewController";
+import EveningEditorActions from "./pages/eveningEditing/EveningEditorActions";
+import Row from "./widgets/Row";
+import errorsStore from "./stores/ErrorsStore";
+import Pages from "./utils/Pages";
+import dataStore from "./stores/DataStore";
+import Page from "./pages/Page";
+import {HomePageActions} from "./HomePageActions";
+import AppNav from "./AppNav";
 
-export default class HomePage extends React.Component {
+export default class HomePage extends ViewController {
 
     constructor(props) {
-        super(props);
-
-        this.state = applicationStore.getState();
-
-        this.updateState = this.updateState.bind(this);
+        super(props, applicationStore, errorsStore, dataStore);
     }
 
     componentDidMount() {
-        applicationStore.addChangeListener(this.updateState);
-        eveningPageActions.initEveningPage();
-    }
-
-    updateState(state) {
-        this.setState(state);
-    }
-
-    componentWillUnmount() {
-        applicationStore.removeChangeListener(this.updateState);
+        super.componentDidMount();
+        Immersive.addImmersiveListener(() => Immersive.on());
+        Immersive.on();
+        HomePageActions.loadSettings()
+            .then(() => EveningEditorActions.getSelectedEvening());
     }
 
     render() {
         return (
-            <Column padding={5} paddingTop={20}>
+            <Page nav={<AppNav/>}>
                 {this.buildContent()}
-                <ApplicationIntegerInput data={this.state.data.integerInput}/>
-                <ApplicationSelectInput data={this.state.data.selectInput}/>
-                <ApplicationTextInput data={this.state.data.textInput}/>
-                <ApplicationLoadingDialog visible={this.state.data.loading && this.state.data.loading.busy}/>
-            </Column>
+            </Page>
         );
     }
 
@@ -55,24 +41,18 @@ export default class HomePage extends React.Component {
         if (data) {
             const evening = data.evening;
             if (evening) {
-                const currentScreen = data.currentScreen;
-                switch (currentScreen){
-                    case Screens.TABLES_LIST:
-                        return <EveningEditor data={data}/>;
-                    case Screens.TABLE_CREATION:
-                        return <DiningTableCreator data={data}/>;
-                    case Screens.TABLE_REVIEW:
-                        return <DiningTableReview data={data}/>;
-                    case Screens.ORDINATION_REVIEW:
-                        return <OrdinationReview data={data}/>;
-                    case Screens.ORDINATION_CREATION:
-                        return <OrdinationCreator data={data}/>;
-                    case Screens.ORDER_TYPE_EDITING:
-                        return <OrderEditor data={data} creator={data.ordersEditing.creating}/>;
-                }
+                return <EveningEditor evening={evening}/>;
             }
-            return <Label>Serata non selezionata</Label>
+            return <Row grow>
+                <Column>
+                    <Label>Serata non selezionata</Label>
+                </Column>
+            </Row>
         }
-        return <Text>Caricamento in corso</Text>;
+        return <Row grow>
+            <Column>
+                <Label>Caricamento in corso</Label>
+            </Column>
+        </Row>;
     }
 }

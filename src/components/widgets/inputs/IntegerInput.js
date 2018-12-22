@@ -2,56 +2,77 @@ import React, {Component} from 'react';
 import Column from "../../../widgets/Column";
 import Row from "../../../widgets/Row";
 import Label from "../../../widgets/Label";
-import {TextInput} from "react-native";
-import {ApplicationActions} from "../../../actions/ApplicationActions";
+import {TextInput, TouchableOpacity} from "react-native";
+import ButtonStyles from "../../../utils/ButtonStyles";
+import Dimensions from "../../../utils/Dimensions";
 
 export default class IntegerInput extends Component {
     constructor(props) {
         super(props);
-    }
-
-    onChar(char) {
-        if (this.props.onChar) {
-            this.props.onChar(char);
+        this.state = {
+            text: props.value ? props.value.toString() : "0"
         }
     }
 
-    onChange(evt) {
-        if (this.props.onChange) {
-            this.props.onChange(evt.target.value);
+    componentDidUpdate(prevProps) {
+        if (prevProps.value !== this.props.value) {
+            this.setState({
+                text: this.props.value ? this.props.value.toString() : "0"
+            })
+        }
+    }
+
+    onChange(text) {
+        this.setState({
+            text: text
+        })
+    }
+
+    onConfirm() {
+        if (this.props.commitAction) {
+            const min = this.props.min !== undefined ? this.props.min : Number.MIN_SAFE_INTEGER;
+            const max = this.props.max !== undefined ? this.props.max : Number.MAX_SAFE_INTEGER;
+            let number = parseInt(this.state.text);
+            if (isNaN(number)) {
+                return;
+            }
+            number = Math.max(number, min);
+            number = Math.min(number, max);
+            this.props.commitAction(number);
         }
     }
 
     focus() {
-        if (this.input) {
-            this.input.focus();
-        }
+        this.input && this.input.focus();
+        this.setState({
+            text: ""
+        })
     }
 
     render() {
-        const disabled = this.props.disabled;
-        const text = this.props.value ? this.props.value.toString() : "0";
+        const text = this.state.text;
 
         return (
             <Row>
                 <Column>
-                    <Row align="center">
-                        <Column auto>
-                            <Label>{this.props.label}</Label>
-                        </Column>
-                        <Column>
-                            <TextInput
-                                ref={ref => {
-                                    this.input = ref
-                                }}
-                                keyboardType="numeric"
-                                editable={!this.props.disabled}
-                                value={text}
-                                onChangeText={text => ApplicationActions.integerInputChange(text)}
-                                onEndEditing={() => this.props.onConfirm()}
-                            />
-                        </Column>
-                    </Row>
+                    <TouchableOpacity style={ButtonStyles.forName()} onPress={() => this.focus()}>
+                        <Row align="center" justify="center">
+                            <Column auto>
+                                <Label>{this.props.label}: </Label>
+                            </Column>
+                            <Column auto>
+                                <TextInput
+                                    style={{fontSize: Dimensions.defaultFont}}
+                                    ref={ref => this.input = ref}
+                                    keyboardType="number-pad"
+                                    editable={!this.props.disabled}
+                                    value={text}
+                                    onChangeText={text => this.onChange(text)}
+                                    onEndEditing={() => this.onConfirm()}
+                                />
+                            </Column>
+                        </Row>
+                    </TouchableOpacity>
                 </Column>
             </Row>);
     }
